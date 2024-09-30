@@ -13,7 +13,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
     allow_headers=["*"],  # Allows all headers
 )
-app = FastAPI()
+
 
 # Database connection handler
 def get_db():
