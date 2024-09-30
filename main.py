@@ -1,6 +1,18 @@
 from fastapi import FastAPI, Query, Request, Depends, HTTPException
 from sqlite3 import connect, Connection
+from fastapi.middleware.cors import CORSMiddleware
 
+# Initialize the FastAPI app
+app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins; change this to your frontend's origin in production
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 app = FastAPI()
 
 # Database connection handler
