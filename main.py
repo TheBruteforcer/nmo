@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Query, Request, Depends
+from fastapi import FastAPI, Query, Request, Depends, HTTPException
 from sqlite3 import connect, Connection
 
 app = FastAPI()
 
-# Database dependency
+# Database connection handler
 def get_db():
     conn = connect("app.db")
     try:
@@ -17,7 +17,7 @@ def get_db():
             )
         """)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error creating table: {e}")
     try:
         yield conn
     finally:
@@ -28,50 +28,66 @@ def get_db():
 def all_posts(conn: Connection = Depends(get_db)):
     resp = []
     ref = conn.cursor()
-    ref.execute("SELECT * FROM POSTS")
-    posts = ref.fetchall()
-    for post in posts:
-        resp.append({
-            "id": post[0],
-            "type": post[1],
-            "title": post[2],
-            "desc": post[3],
-            "html": post[4]
-        })
+    try:
+        ref.execute("SELECT * FROM POSTS")
+        posts = ref.fetchall()
+        for post in posts:
+            resp.append({
+                "id": post[0],
+                "type": post[1],
+                "title": post[2],
+                "desc": post[3],
+                "html": post[4]
+            })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     return resp
 
 # Get a specific post by ID
 @app.get("/get-post")
 def post(id: int = Query(...), conn: Connection = Depends(get_db)):
     ref = conn.cursor()
-    ref.execute("SELECT * FROM POSTS WHERE ID = ?", (id,))
-    post = ref.fetchone()
-    
-    if post:
-        return {
-            "id": post[0],
-            "type": post[1],
-            "title": post[2],
-            "desc": post[3],
-            "html": post[4]
-        }
-    else:
-        return {"error": "Post not found"}
+    try:
+        ref.execute("SELECT * FROM POSTS WHERE ID = ?", (id,))
+        post = ref.fetchone()
+        
+        if post:
+            return {
+                "id": post[0],
+                "type": post[1],
+                "title": post[2],
+                "desc": post[3],
+                "html": post[4]
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Post not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Add a new post
 @app.post("/add-post")
 async def add_post(r: Request, conn: Connection = Depends(get_db)):
-    data = await r.json()
-    ref = conn.cursor()
-    
-    # Insert the new post
-    ref.execute(
-        "INSERT INTO POSTS (type, title, desc, html) VALUES (?, ?, ?, ?)",
-        (data["type"], data["title"], data["desc"], data["html"])
-    )
-    
-    conn.commit()  # Commit the transaction
-    new_id = ref.lastrowid  # Get the ID of the newly inserted post
-    ref.close()  # Close the cursor
-    
-    return {"success": True, "new_id": new_id}
+    try:
+        data = await r.json()
+        
+        # Ensure all expected keys are present in the incoming JSON
+        required_fields = ["type", "title", "desc", "html"]
+        for field in required_fields:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"Missing field: {field}")
+        
+        ref = conn.cursor()
+        
+        # Insert the new post
+        ref.execute(
+            "INSERT INTO POSTS (type, title, desc, html) VALUES (?, ?, ?, ?)",
+            (data["type"], data["title"], data["desc"], data["html"])
+        )
+        
+        conn.commit()  # Commit the transaction
+        new_id = ref.lastrowid  # Get the ID of the newly inserted post
+        ref.close()  # Close the cursor
+        
+        return {"success": True, "new_id": new_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
