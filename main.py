@@ -5,7 +5,7 @@ from sqlite3 import *
 def get_db():
     conn = connect("app.db")
     try:
-        conn.cursor().execute("CREATE TABLE POSTS (ID TEXT, HTML TEXT)")
+        conn.cursor().execute("CREATE TABLE POSTS (ID TEXT,TYPE TEXT, TITLE TEXT, DESC TEXT, HTML TEXT)")
     except:
         pass
     yield conn
@@ -19,7 +19,7 @@ def all_posts(conn = Depends(get_db)):
     ref.execute("SELECT * FROM POSTS")
     posts = ref.fetchall()
     for post in posts :
-        resp.append({"id" : post[0], "parse" : post[1]})
+        resp.append({"id" : post[0], "type" : post[1], 'title' : post[2], "desc" : post[3], "pares" : post[4] })
         
     return resp
 
@@ -30,7 +30,8 @@ def post(id : str = Query(...), conn = Depends(get_db)):
     ref.execute("SELECT * FROM POSTS WHERE ID = ?", (id,))
     posts = ref.fetchall()
     for post in posts :
-        resp.append({"id" : post[0], "parse" : post[1]})
+        resp.append({"id" : post[0], "type" : post[1], 'title' : post[2], "desc" : post[3], "pares" : post[4] })
+
         
     return resp
 
@@ -42,7 +43,7 @@ async def add(r : Request, conn = Depends(get_db)):
    id = 0
    for p in ref.fetchall():
        id += int(p[0])
-   ref.execute("INSERT INTO POSTS (?, ? )", (str(id), data["html"]))
+   ref.execute("INSERT INTO POSTS (?, ?, ?, ? ,?)", (str(id), data["type"], data["title"], data["desc"], data["html"]))
    return {"success" : True}
    
     
