@@ -36,14 +36,24 @@ def post(id : str = Query(...), conn = Depends(get_db)):
     return resp
 
 @app.post("/add-post")
-async def add(r : Request, conn = Depends(get_db)):
-   data = await r.json()
-   ref = conn.cursor()
-   ref.execute("SELECT * FROM POSTS")
-   id = 0
-   for p in ref.fetchall():
-       id += int(p[0])
-   ref.execute("INSERT INTO POSTS (?, ?, ?, ? ,?)", (str(id), data["type"], data["title"], data["desc"], data["html"]))
-   return {"success" : True}
-   
+async def add_post(r: Request, conn=Depends(get_db)):
+    data = await r.json()
+    ref = conn.cursor()
+    
+    # Get the maximum id from the POSTS table
+    ref.execute("SELECT MAX(id) FROM POSTS")
+    result = ref.fetchone()
+    new_id = result[0] + 1 if result[0] is not None else 1  # Set id to 1 if no posts exist
+    
+    # Insert the new post
+    ref.execute(
+        "INSERT INTO POSTS (id, type, title, desc, html) VALUES (?, ?, ?, ?, ?)",
+        (new_id, data["type"], data["title"], data["desc"], data["html"])
+    )
+    
+    conn.commit()  # Commit the transaction
+    ref.close()  # Close the cursor
+    
+    return {"success": True}
+
     
