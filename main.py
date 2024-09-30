@@ -5,7 +5,7 @@ app = FastAPI()
 
 # Database connection handler
 def get_db():
-    conn = connect("app.db")
+    conn = connect("app.db", check_same_thread=False)  # Disable thread check
     try:
         conn.cursor().execute("""
             CREATE TABLE IF NOT EXISTS POSTS (
@@ -22,7 +22,6 @@ def get_db():
         yield conn
     finally:
         conn.close()
-
 # Get all posts
 @app.get("/get-posts")
 def all_posts(conn: Connection = Depends(get_db)):
